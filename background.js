@@ -63,7 +63,7 @@ async function score(job) {
 
   const key = await hash(resume + "\n" + job.text);
   const state = `RESUME:\n${resume}\n\nJOB DESCRIPTION:\n${job.text}`;
-  if (scores[key]) return { ...scores[key], sent: state }; // same key = same resume + text = same state
+  if (scores[key]) return { ...scores[key], sent: job.text };
   const t0 = performance.now();
   const { answers } = await callJev(apiKey, state);
   const apiMs = Math.round(performance.now() - t0); // includes the retry delay if one happened
@@ -77,7 +77,7 @@ async function score(job) {
     url: job.url || "",
     timestamp: Date.now(),
     apiMs,
-    sent: state, // exact text sent to Jev, shown in the side panel
+    sent: job.text, // job description as sent (resume is constant, so not stored per job)
   };
   scores[key] = result;
   // keep newest 50

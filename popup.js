@@ -23,7 +23,7 @@ $("csv").onclick = async () => {
 
 // Panel stays open; content.js scores jobs as you browse. background.js keeps `current` (this page) and `scores` (history).
 let e2e = {};
-function render({ current, scores = {} }) {
+function render({ current, scores = {}, recentClearedAt = 0 }) {
   const s = current;
   $("empty").hidden = !!s;
   $("result").hidden = !s;
@@ -50,8 +50,8 @@ function render({ current, scores = {} }) {
   }
   $("sentBox").hidden = s?.score == null;
   if (s?.score != null) {
-    const sent = s.sent || "";
-    $("sentSum").textContent = s.sent ? `What was sent to Jev (${sent.length.toLocaleString()} chars)` : "What was sent to Jev";
+    const sent = (s.sent || "").split("\n\nJOB DESCRIPTION:\n").pop(); // older entries stored resume + JD
+    $("sentSum").textContent = s.sent ? `Job description sent to Jev (${sent.length.toLocaleString()} chars)` : "Job description sent to Jev";
     if ($("sent").textContent !== sent) $("sent").textContent = sent;
   }
   $("qBox").hidden = !s?.questions || s.score == null;
@@ -59,7 +59,8 @@ function render({ current, scores = {} }) {
     const q = JSON.stringify(s.questions, null, 2);
     if ($("q").textContent !== q) $("q").textContent = q;
   }
-  const all = Object.values(scores).sort((a, b) => b.timestamp - a.timestamp).filter((r) => r.timestamp !== s?.timestamp);
+  const all = Object.values(scores).sort((a, b) => b.timestamp - a.timestamp).filter((r) => r.timestamp !== s?.timestamp && r.timestamp > recentClearedAt);
+  $("recentSum").textContent = `Recent (${Math.min(all.length, 10)})`;
   $("recent").replaceChildren(...all.slice(0, 10).map((r) => {
     const li = document.createElement("li"), a = document.createElement("a");
     const dot = document.createElement("span"), meta = document.createElement("div"), t = document.createElement("div"), c = document.createElement("div");
@@ -70,9 +71,9 @@ function render({ current, scores = {} }) {
     return li;
   }));
 }
-const refresh = () => chrome.storage.local.get(["current", "scores"]).then(render);
+const refresh = () => chrome.storage.local.get(["current", "scores", "recentClearedAt"]).then(render);
 refresh();
-chrome.storage.onChanged.addListener((c) => (c.current || c.scores) && refresh());
+chrome.storage.onChanged.addListener((c) => (c.current || c.scores || c.recentClearedAt) && refresh());
 
 // Text size: scales the whole panel, remembered across sessions.
 let scale = 1;
@@ -84,3 +85,9 @@ const setScale = (s) => {
 $("smaller").onclick = () => setScale(scale - 0.1);
 $("bigger").onclick = () => setScale(scale + 0.1);
 chrome.storage.local.get("fontScale").then((r) => r.fontScale && setScale(r.fontScale));
+
+// Hides older entries from Recent only; `scores` stays as the cache so revisited jobs still cost nothing.
+$("clearRecent").onclick = (e) => {
+  e.preventDefault();
+  chrome.storage.local.set({ recentClearedAt: Date.now() });
+};

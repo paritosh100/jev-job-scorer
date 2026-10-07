@@ -6,7 +6,7 @@
 
 A Chrome extension that reads the job posting on your screen and scores it **0–10** against your resume using the Jev model (TypeSafe API). Click a job, and the score shows up in a side panel within about a second. No copy-pasting.
 
-<!-- Add a screenshot: docs/screenshot.png -->
+![Jev Job Scorer side panel scoring an AI Engineer posting on LinkedIn: 6.8, Tier 2 - strong fit, meets core requirements](docs/side-panel-example.png)
 
 ## Features
 

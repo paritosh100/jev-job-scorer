@@ -6,12 +6,24 @@ const SELECTORS = [
   ".job__description", "#content .job-post", // Greenhouse
   ".ashby-job-posting-right-pane", // Ashby
   "#job-post-body", "[class*='job-description']", // Built In
-  "main", // last resort, only reached on the single-job pages allowed by JOB_URL
 ];
 
-// These boards also serve company/listing pages; only score single-job pages.
-const NEEDS_JOB_URL = /greenhouse\.io|ashbyhq\.com|builtin\.com/;
-const JOB_URL = /greenhouse\.io\/.+\/jobs\/\d+|gh_jid=|ashbyhq\.com\/[^/]+\/[0-9a-f-]{36}|builtin\.com\/job\//;
+// Only run on URLs that can hold a job posting (profiles, feeds, company pages etc. are skipped).
+// Per host; a host with no entry here is never scored.
+const JOB_URLS = {
+  "linkedin.com": /\/jobs\//,
+  "indeed.com": /\/viewjob|[?&](vjk|jk)=/,
+  "glassdoor.com": /job-listing|jobListingId=|[?&]jl=/,
+  "greenhouse.io": /\/jobs\/\d+|gh_jid=/,
+  "ashbyhq.com": /ashbyhq\.com\/[^/]+\/[0-9a-f-]{36}/,
+  "builtin.com": /\/job\//,
+};
+const SINGLE_JOB_SITES = /greenhouse\.io|ashbyhq\.com|builtin\.com/; // one job per page, so <main> is a safe fallback
+const onJobUrl = () => Object.entries(JOB_URLS).some(([h, re]) => location.hostname.endsWith(h) && re.test(location.href));
+
+// Second gate: the text itself has to read like a job description, not a profile or feed.
+const JD_WORDS = /responsibilit|requirements|qualifications|you will|you'll|we are looking|we're looking|what you|apply|benefits|equal opportunity|about the (job|role|team)/gi;
+const looksLikeJD = (t) => new Set((t.match(JD_WORDS) || []).map((w) => w.toLowerCase())).size >= 2;
 
 // LinkedIn's class names are obfuscated and change often, so anchor on the visible "About the job" heading.
 let bodyEl; // last job container; reused while still attached so most reads skip the full-page scan
@@ -24,17 +36,19 @@ function findBody() {
     while (n && n.innerText.length < 300) n = n.parentElement;
     if (n && n.innerText.length < 30000) return (bodyEl = n);
   }
-  return (bodyEl = SELECTORS.map((s) => document.querySelector(s)).find((e) => e?.innerText.trim()));
+  const el = SELECTORS.map((s) => document.querySelector(s)).find((e) => e?.innerText.trim())
+    || (SINGLE_JOB_SITES.test(location.hostname) && document.querySelector("main"));
+  return (bodyEl = el || undefined);
 }
 
 function read() {
-  if (NEEDS_JOB_URL.test(location.host) && !JOB_URL.test(location.href)) return null;
+  if (!onJobUrl()) return null;
   const body = findBody();
   if (!body) return null;
   const text = body.innerText.replace(/\s+/g, " ").trim();
   const title = document.querySelector("h1")?.innerText.trim() || document.title.split(" | ")[0];
   const company = document.querySelector(".job-details-jobs-unified-top-card__company-name, [data-company-name]")?.innerText.trim() || document.title.split(" | ")[1] || "";
-  return text.length > 200 ? { text, title, company, url: location.href } : null;
+  return text.length > 200 && looksLikeJD(text) ? { text, title, company, url: location.href } : null;
 }
 
 const color = (s) => (s <= 3 ? "#dc3545" : s <= 5 ? "#fd7e14" : s <= 7 ? "#ffc107" : "#28a745");

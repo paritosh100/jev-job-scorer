@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <circle cx="512" cy="512" r="460" fill="#1E7E34" />
+  <circle cx="512" cy="512" r="390" fill="#28A745" />
+  <g stroke="#1E7E34" stroke-width="45" stroke-linecap="round">
+    <line x1="512" y1="52" x2="512" y2="122" />
+    <line x1="512" y1="972" x2="512" y2="902" />
+    <line x1="52" y1="512" x2="122" y2="512" />
+    <line x1="972" y1="512" x2="902" y2="512" />
+    <line x1="837" y1="187" x2="787" y2="237" />
+    <line x1="837" y1="837" x2="787" y2="787" />
+    <line x1="187" y1="837" x2="237" y2="787" />
+    <line x1="187" y1="187" x2="237" y2="237" />
+  </g>
+  <line x1="720" y1="200" x2="760" y2="240" stroke="#FFFFFF" stroke-width="40" stroke-linecap="round" />
+  <g>
+    <line x1="620" y1="620" x2="820" y2="820" stroke="#FFFFFF" stroke-width="90" stroke-linecap="round" />
+    <circle cx="470" cy="470" r="215" fill="#28A745" stroke="#FFFFFF" stroke-width="70" />
+    <path d="M 530 360 V 520 A 60 60 0 0 1 410 520 V 480" fill="none" stroke="#FFFFFF" stroke-width="75" stroke-linecap="round" />
+  </g>
+</svg>

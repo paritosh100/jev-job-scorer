@@ -21,8 +21,12 @@
   .chip.yes { color: #1a7f37; border-color: #1a7f37; }
   .chip.no { color: #c0392b; border-color: #c0392b; }
   #empty { color: var(--mute); }
+  #recentBox { margin-top: 18px; }
+  #recentBox summary { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; cursor: pointer; }
   h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--mute); margin: 18px 0 6px; }
-  #recent { list-style: none; margin: 0; padding: 0; }
+  .clear { margin-top: 6px; font-size: 12px; }
+  .clear a { color: var(--accent); }
+  #recent { list-style: none; margin: 6px 0 0; padding: 0; }
   #recent a { display: flex; gap: 10px; align-items: center; padding: 8px 6px; border-radius: 8px; color: inherit; text-decoration: none; }
   #recent a:hover, #recent a:focus-visible { background: var(--card); outline: none; }
   .dot { flex: none; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-weight: 700; font-size: 13px; }
@@ -35,11 +39,12 @@
   textarea { width: 100%; height: 100px; margin: 6px 0; background: var(--card); color: var(--fg); border: 1px solid var(--line); border-radius: 8px; padding: 8px; font: inherit; }
   button { background: var(--accent); color: #fff; border: 0; border-radius: 8px; padding: 6px 14px; font: inherit; cursor: pointer; }
   #err { color: #c0392b; margin-top: 8px; }
-  footer { margin-top: 16px; font-size: 12px; }
-  footer a { color: var(--accent); }
+  .links { margin: -4px 0 12px; font-size: 12px; }
+  .links a { color: var(--accent); }
 </style>
 <header><h1>Jev Job Scorer</h1><span class="live" role="status">Watching this page</span>
   <span class="zoom"><button id="smaller" aria-label="Decrease font size">A−</button><button id="bigger" aria-label="Increase font size">A+</button></span></header>
+<nav class="links"><a href="#" id="settings">Settings</a> · <a href="#" id="csv">Export CSV</a></nav>
 <section class="card" id="current" aria-live="polite">
   <div id="empty">Open a job on LinkedIn, Indeed or Glassdoor. Scores appear here automatically.</div>
   <div id="result" hidden>
@@ -49,14 +54,12 @@
     <div class="chips"><span class="chip" id="tier"></span><span class="chip" id="meets"></span><span class="chip" id="lat"></span></div>
   </div>
 </section>
-<details id="sentBox" hidden><summary id="sentSum">What was sent to Jev</summary><pre id="sent"></pre></details>
+<details id="sentBox" hidden><summary id="sentSum">Job description sent to Jev</summary><pre id="sent"></pre></details>
 <details id="qBox" hidden><summary>Questions asked to Jev</summary><pre id="q"></pre></details>
 <div id="err" role="alert"></div>
-<h2>Recent</h2>
-<ul id="recent"></ul>
+<details id="recentBox" open><summary id="recentSum">Recent</summary><div class="clear"><a href="#" id="clearRecent">Clear list</a></div><ul id="recent"></ul></details>
 <details><summary>Paste a description manually</summary>
   <textarea id="text" aria-label="Job description"></textarea>
   <button id="go">Score</button>
 </details>
-<footer><a href="#" id="settings">Settings</a> · <a href="#" id="csv">Export CSV</a></footer>
 <script src="popup.js"></script>
