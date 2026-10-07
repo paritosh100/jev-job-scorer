@@ -1,0 +1,17 @@
+{
+  "manifest_version": 3,
+  "name": "Jev Job Scorer",
+  "version": "0.2.0",
+  "description": "Score job postings 0-10 against your resume with Jev.",
+  "permissions": ["activeTab", "scripting", "storage", "contextMenus", "sidePanel"],
+  "host_permissions": ["https://api.typesafe.ai/*"],
+  "content_scripts": [{
+    "matches": ["https://*.linkedin.com/*", "https://*.indeed.com/*", "https://*.glassdoor.com/*",
+                "https://*.greenhouse.io/*", "https://*.ashbyhq.com/*", "https://*.builtin.com/*"],
+    "js": ["content.js"]
+  }],
+  "background":{ "service_worker": "background.js" },
+  "action": {},
+  "side_panel": { "default_path": "popup.html" },
+  "options_page": "options.html"
+}
