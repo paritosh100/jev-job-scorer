@@ -48,10 +48,35 @@ function read() {
   const text = body.innerText.replace(/\s+/g, " ").trim();
   const title = document.querySelector("h1")?.innerText.trim() || document.title.split(" | ")[0];
   const company = document.querySelector(".job-details-jobs-unified-top-card__company-name, [data-company-name]")?.innerText.trim() || document.title.split(" | ")[1] || "";
-  return text.length > 200 && looksLikeJD(text) ? { text, title, company, url: location.href } : null;
+  const publishedAt = readPublishedAt(title);
+  return text.length > 200 && looksLikeJD(text) ? { text, title, company, url: location.href, publishedAt } : null;
+}
+
+// Ashby (and other schema.org sites) embed the post date as JSON-LD; no need to scrape visible "posted X days ago" text.
+// Matched against the scraped title because an SPA page can hold a stale/unrelated JobPosting block
+// after client-side navigation to a different job (JSON-LD doesn't always re-render in sync with the DOM).
+function readPublishedAt(title) {
+  const norm = (t) => (t || "").trim().toLowerCase();
+  for (const s of document.querySelectorAll('script[type="application/ld+json"]')) {
+    try {
+      const data = JSON.parse(s.textContent);
+      for (const d of Array.isArray(data) ? data : [data]) {
+        if (d?.["@type"] === "JobPosting" && d.datePosted && norm(d.title) === norm(title)) return d.datePosted;
+      }
+    } catch { /* not JSON, skip */ }
+  }
+  return "";
 }
 
 const color = (s) => (s <= 3 ? "#dc3545" : s <= 5 ? "#fd7e14" : s <= 7 ? "#ffc107" : "#28a745");
+
+// Ashby's datePosted is a UTC date; parsing it as local time (new Date(iso)) can roll it back a day
+// west of UTC. Read the YYYY-MM-DD part directly so the displayed date matches the source, not the viewer's TZ.
+function formatPostedDate(iso) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
+  if (!m) return iso;
+  return new Date(+m[1], +m[2] - 1, +m[3]).toLocaleDateString();
+}
 
 // Shadow DOM isolates our styles from the page; textContent only, so page text can't inject markup.
 const host = document.createElement("div");
@@ -83,7 +108,14 @@ function show(title, big, detail, c = "#222") {
   if (!closed && !host.isConnected) document.documentElement.append(host);
 }
 
-let seen = "", seenAt = 0, scored = "";
+let seen = "", seenAt = 0, scored = "", lastPublishedAt = "", lastShown = null;
+
+function renderShown() {
+  if (!lastShown) return;
+  const { title, score, tier, meetsRequirements } = lastShown;
+  const posted = lastPublishedAt ? `Posted ${formatPostedDate(lastPublishedAt)} · ` : "";
+  show(title, score, `${posted}${tier ?? ""} · Meets core requirements: ${meetsRequirements ? "yes" : "no"}`, color(score));
+}
 
 function tick() {
   if (!chrome.runtime?.id) return observer.disconnect(); // extension was reloaded
@@ -91,8 +123,18 @@ function tick() {
   if (!job) return console.debug("[Jev] no job text found on this page yet");
   // new text: remember when it appeared, then re-check shortly; unchanged on that re-check = page finished loading
   if (job.text !== seen) { seen = job.text; seenAt = Date.now(); return schedule(SETTLE_MS); }
-  if (job.text === scored) return;
+  if (job.text === scored) {
+    // Ashby's JSON-LD can render after the job text has already settled and been scored; pick up a
+    // late-arriving date without re-calling the API, and persist it so the side panel/cache match too.
+    if (job.publishedAt && job.publishedAt !== lastPublishedAt) {
+      lastPublishedAt = job.publishedAt;
+      renderShown();
+      chrome.runtime.sendMessage({ type: "updatePublishedAt", text: job.text, publishedAt: job.publishedAt });
+    }
+    return;
+  }
   scored = job.text;
+  lastPublishedAt = job.publishedAt;
   job.detectedAt = seenAt; // first moment this job text appeared; background/panel measure end-to-end from here
   show(job.title, "…", "Analyzing job…");
   chrome.runtime.sendMessage({ type: "score", job }, (res) => {
@@ -102,7 +144,8 @@ function tick() {
     }
     console.log(`[Jev] floating box shown ${Date.now() - seenAt}ms after detection`);
     const { score, tier, meetsRequirements } = res.r;
-    show(job.title, score, `${tier ?? ""} · Meets core requirements: ${meetsRequirements ? "yes" : "no"}`, color(score));
+    lastShown = { title: job.title, score, tier, meetsRequirements };
+    renderShown();
   });
 }
 
@@ -114,6 +157,7 @@ function schedule(ms) {
   pending = setTimeout(() => { pending = 0; tick(); }, ms);
 }
 const observer = new MutationObserver(() => schedule(SETTLE_MS));
-observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+// documentElement, not body: Ashby's JSON-LD <script> (and other late metadata) can land in <head>.
+observer.observe(document.documentElement, { childList: true, subtree: true, characterData: true });
 console.log("[Jev] content script loaded");
 tick(); // job may already be on screen when the script loads

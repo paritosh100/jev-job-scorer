@@ -2,6 +2,14 @@ const $ = (id) => document.getElementById(id);
 
 const color = (s) => (s <= 3 ? "#dc3545" : s <= 5 ? "#fd7e14" : s <= 7 ? "#ffc107" : "#28a745");
 
+// Ashby's datePosted is a UTC date; parsing it as local time (new Date(iso)) can roll it back a day
+// west of UTC. Read the YYYY-MM-DD part directly so the displayed date matches the source, not the viewer's TZ.
+function formatPostedDate(iso) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
+  if (!m) return iso;
+  return new Date(+m[1], +m[2] - 1, +m[3]).toLocaleDateString();
+}
+
 function run(job) {
   $("err").textContent = "";
   chrome.runtime.sendMessage({ type: "score", job }, (res) => {
@@ -34,6 +42,7 @@ function render({ current, scores = {}, recentClearedAt = 0 }) {
     $("badge").style.background = done ? color(s.score) : "";
     $("title").textContent = s.title || "";
     $("company").textContent = s.pending ? "Analyzing job…" : s.company || "";
+    $("published").textContent = s.publishedAt ? `Posted ${formatPostedDate(s.publishedAt)}` : "";
     $("tier").hidden = $("meets").hidden = $("lat").hidden = !done;
     if (done) {
       $("tier").textContent = s.tier ?? "";
@@ -46,7 +55,23 @@ function render({ current, scores = {}, recentClearedAt = 0 }) {
       $("lat").textContent = (s.cached ? "cached · " : "") + (e2e.at === s.detectedAt ? `${fmt(e2e.ms)} total · ` : "") + `${fmt(s.ms)} backend`;
       $("meets").textContent = s.meetsRequirements ? "Meets core requirements" : "Missing core requirements";
       $("meets").className = "chip " + (s.meetsRequirements ? "yes" : "no");
+      $("constraints").hidden = s.hardConstraintsOk == null;
+      $("constraints").textContent = s.hardConstraintsOk ? "No hard constraints" : "Hard constraint conflict";
+      $("constraints").className = "chip " + (s.hardConstraintsOk ? "yes" : "no");
     }
+  }
+  const DIM_LABELS = { hard_skills: "Hard skills", soft_skills: "Soft skills", responsibilities: "Responsibilities",
+    industry_fit: "Industry / recruiter screen", expected_proof: "Expected proof", scale_transferability: "Scale & transferability" };
+  $("breakdownBox").hidden = !s?.breakdown;
+  if (s?.breakdown) {
+    $("breakdown").replaceChildren(...Object.entries(s.breakdown).map(([k, v]) => {
+      const li = document.createElement("li"), label = document.createElement("span"), score = document.createElement("span");
+      label.textContent = DIM_LABELS[k] || k;
+      score.className = "d-score"; score.textContent = v.score;
+      score.style.color = color(v.score);
+      li.append(label, score);
+      return li;
+    }));
   }
   $("sentBox").hidden = s?.score == null;
   if (s?.score != null) {
